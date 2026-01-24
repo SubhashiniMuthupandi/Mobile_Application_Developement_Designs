@@ -1,0 +1,127 @@
+MainActivity.java
+package com.example.exercise3;
+import android.content.Intent;
+import android.os.Bundle;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Spinner;
+import androidx.appcompat.app.AppCompatActivity;
+public class MainActivity extends AppCompatActivity {
+    EditText e1;
+    Spinner s1;
+    Button b1;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        e1 = findViewById(R.id.editTextText);
+        s1 = findViewById(R.id.spinner);
+        b1 = findViewById(R.id.button);
+        b1.setOnClickListener(v -> {
+            String name = e1.getText().toString();
+            String shape = s1.getSelectedItem().toString();
+            Intent i = new Intent(MainActivity.this, MainActivity1.class);
+            i.putExtra("name", name);
+            i.putExtra("shape", shape);
+            startActivity(i);
+        });
+    }
+}
+MainActivity1.java
+package com.example.exercise3;
+import android.os.Bundle;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import androidx.appcompat.app.AppCompatActivity;
+public class MainActivity1 extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        String name = getIntent().getStringExtra("name");
+        String shape = getIntent().getStringExtra("shape");
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        // TextView for name
+        TextView nameView = new TextView(this);
+        nameView.setTextSize(24);
+        nameView.setText("Name: " + name);
+        layout.addView(nameView);
+        // Add selected shape view
+        if (shape.equals("Smiley")) {
+            layout.addView(new SmileyView(this));
+        } else {
+            layout.addView(new HouseView(this));
+        }
+        setContentView(layout);
+    }
+}
+Strings.xml
+<resources>
+    <string name="app_name">exercise3</string>
+    <string-array name="shapes">
+        <item>Smiley</item>
+        <item>House</item>
+    </string-array>
+</resources>
+SmileyView.java
+package com.example.exercise3;
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.view.View;
+public class SmileyView extends View {
+    Paint paint = new Paint();
+    public SmileyView(Context context) {
+        super(context);
+        paint.setAntiAlias(true);
+    }
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        // Face
+        paint.setColor(Color.YELLOW);
+        paint.setStyle(Paint.Style.FILL);
+        canvas.drawCircle(500, 500, 250, paint);
+        // Eyes
+        paint.setColor(Color.BLACK);
+        canvas.drawCircle(420, 450, 30, paint);
+        canvas.drawCircle(580, 450, 30, paint);
+        // Smile
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(10);
+        canvas.drawArc(400, 450, 600, 650, 0, 180, false, paint);
+    }
+}
+HouseView.java
+package com.example.exercise3;
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.view.View;
+public class HouseView extends View {
+    Paint paint = new Paint();
+    public HouseView(Context context) {
+        super(context);
+        paint.setAntiAlias(true);
+    }
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        // House base (colored)
+        paint.setColor(Color.BLUE);
+        paint.setStyle(Paint.Style.FILL);
+        canvas.drawRect(300, 500, 700, 850, paint);
+        // Roof (red)
+        paint.setColor(Color.RED);
+        Path roof = new Path();
+        roof.moveTo(300, 500);
+        roof.lineTo(500, 300);
+        roof.lineTo(700, 500);
+        roof.close();
+        canvas.drawPath(roof, paint);
+        // Door (brown)
+        paint.setColor(Color.rgb(139, 69, 19)); // brown
+        canvas.drawRect(450, 650, 550, 850, paint);
