@@ -1,0 +1,160 @@
+package com.example.ex5scen;
+
+import android.Manifest;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.os.Build;
+import android.os.Bundle;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
+
+public class MainActivity extends AppCompatActivity {
+    EditText etAmount, etCategory;
+    TextView tvTotal;
+    Button btnAdd, btnCheck;
+    SharedPreferences prefs;
+    double totalSpent = 0;
+    double dailyLimit = 1000;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        etAmount = findViewById(R.id.etAmount);
+        etCategory = findViewById(R.id.etCategory);
+        tvTotal = findViewById(R.id.tvTotal);
+        btnAdd = findViewById(R.id.btnAdd);
+        btnCheck = findViewById(R.id.btnCheck);
+
+        prefs = getSharedPreferences("expenses", MODE_PRIVATE);
+        totalSpent = prefs.getFloat("total_today", 0);
+        tvTotal.setText("₹" + (int)totalSpent);
+
+        btnAdd.setOnClickListener(v -> addExpense());
+        btnCheck.setOnClickListener(v -> checkLimit());
+
+        createNotificationChannel();
+    }
+
+    void addExpense() {
+        try {
+            double amount = Double.parseDouble(etAmount.getText().toString());
+            String category = etCategory.getText().toString();
+
+            totalSpent += amount;
+            prefs.edit().putFloat("total_today", (float)totalSpent).apply();
+
+            tvTotal.setText("₹" + (int)totalSpent);
+            etAmount.setText(""); etCategory.setText("");
+            Toast.makeText(this, "✅ Added ₹" + (int)amount, Toast.LENGTH_SHORT).show();
+
+            checkLimit();
+        } catch (Exception e) {
+            Toast.makeText(this, "❌ Enter valid amount", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    void checkLimit() {
+        double percentage = (totalSpent / dailyLimit) * 100;
+
+        if (percentage >= 100) {
+            showPieChartNotification(Color.parseColor("#FF9800"), "🟡 EXCEEDED LIMIT!", percentage);
+        } else if (percentage >= 80) {
+            showPieChartNotification(Color.parseColor("#F44336"), "🔴 HIGH USAGE!", percentage);
+        } else if (percentage >= 50) {
+            showPieChartNotification(Color.parseColor("#4CAF50"), "🟢 MEDIUM USAGE", percentage);
+        } else {
+            Toast.makeText(this, "✅ Safe: " + (int)percentage + "% used", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    void showPieChartNotification(int color, String title, double percentage) {
+        Bitmap pieChart = createPieChart();
+
+        Intent intent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "channel1")
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setColor(color)
+                .setContentTitle(title)
+                .setContentText(String.format("₹%.0f / ₹%.0f (%.0f%%)", totalSpent, dailyLimit, percentage))
+                .setContentIntent(pendingIntent)
+                .setStyle(new NotificationCompat.BigPictureStyle()
+                        .bigPicture(pieChart)
+                        .setBigContentTitle("Expense Tracker")
+                        .setSummaryText(String.format("%.0f%% of daily limit", percentage)))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI);
+
+        NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+
+        // Check permission before showing
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            manager.notify((int)System.currentTimeMillis(), builder.build()); // Unique ID
+        } else {
+            Toast.makeText(this, "📱 Grant notification permission in Settings > Apps > Expense Tracker", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    Bitmap createPieChart() {
+        Bitmap bitmap = Bitmap.createBitmap(300, 300, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        canvas.drawColor(Color.WHITE);
+
+        double percentage = (totalSpent / dailyLimit) * 360;
+        int spentColor = Color.parseColor("#FF4444");
+        int remainingColor = Color.parseColor("#44AA44");
+
+        paint.setColor(spentColor);
+        canvas.drawArc(30, 30, 270, 270, 270, (float)percentage, true, paint);
+
+        paint.setColor(remainingColor);
+        canvas.drawArc(30, 30, 270, 270, (float)(270 + percentage), 360-(float)percentage, true, paint);
+
+        paint.setColor(Color.BLACK);
+        paint.setTextSize(36);
+        paint.setFakeBoldText(true);
+        canvas.drawText("₹" + (int)totalSpent, 90, 170, paint);
+
+        paint.setTextSize(24);
+        canvas.drawText((int)((totalSpent/dailyLimit)*100) + "%", 110, 210, paint);
+
+        return bitmap;
+    }
+
+    void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    "channel1",
+                    "Expense Alerts",
+                    NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setDescription("Daily spending limit alerts");
+            channel.enableLights(true);
+            channel.enableVibration(true);
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(channel);
+        }
+    }
+}
