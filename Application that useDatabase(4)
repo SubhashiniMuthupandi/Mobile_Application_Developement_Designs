@@ -1,0 +1,77 @@
+package com.example.ex4;
+import android.database.Cursor;
+import android.os.Bundle;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+
+    EditText etName, etPlace;
+    Button btnInsert, btnUpdate, btnDelete, btnView;
+    DBHelper db;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        etName = findViewById(R.id.etName);
+        etPlace = findViewById(R.id.etPlace);
+
+        btnInsert = findViewById(R.id.btnInsert);
+        btnUpdate = findViewById(R.id.btnUpdate);
+        btnDelete = findViewById(R.id.btnDelete);
+        btnView = findViewById(R.id.btnView);
+
+        db = new DBHelper(this);
+
+        // INSERT
+        btnInsert.setOnClickListener(v -> {
+            boolean result = db.insertData(
+                    etName.getText().toString(),
+                    etPlace.getText().toString()
+            );
+            Toast.makeText(this, result ? "Inserted" : "Insert Failed", Toast.LENGTH_SHORT).show();
+        });
+
+        // UPDATE
+        btnUpdate.setOnClickListener(v -> {
+            boolean result = db.updateData(
+                    etName.getText().toString(),
+                    etPlace.getText().toString()
+            );
+            Toast.makeText(this, result ? "Updated" : "Update Failed", Toast.LENGTH_SHORT).show();
+        });
+
+        // DELETE
+        btnDelete.setOnClickListener(v -> {
+            boolean result = db.deleteData(etName.getText().toString());
+            Toast.makeText(this, result ? "Deleted" : "Delete Failed", Toast.LENGTH_SHORT).show();
+        });
+
+        // VIEW
+        btnView.setOnClickListener(v -> {
+            Cursor cursor = db.viewData();
+            if (cursor.getCount() == 0) {
+                Toast.makeText(this, "No Data", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            StringBuilder buffer = new StringBuilder();
+            while (cursor.moveToNext()) {
+                buffer.append("Name: ").append(cursor.getString(0)).append("\n");
+                buffer.append("Place: ").append(cursor.getString(1)).append("\n\n");
+            }
+
+            new AlertDialog.Builder(this)
+                    .setTitle("User Data")
+                    .setMessage(buffer.toString())
+                    .setCancelable(true)
+                    .show();
+        });
+    }
+}
